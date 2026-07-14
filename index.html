@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="public, max-age=2592000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>日本美食店铺投票清单</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+    body {
+      background: #f7f8fa;
+      padding: 12px;
+      max-width: 1200px;
+      margin: 0 auto;
+      overflow-x: hidden;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      color: #222;
+      font-size: 20px;
+      margin-bottom: 6px;
+    }
+    .header p {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .export-btn {
+      font-size: 12px;
+      padding: 4px 10px;
+      background: #52c41a;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .filter-bar {
+      background: #fff;
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      position: sticky;
+      top: 12px;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,0.95);
+    }
+    select, button {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      background: #fff;
+      flex: 1;
+      min-width: 80px;
+    }
+    #resetBtn {
+      background: #4096ff;
+      color: white;
+      border: none;
+      flex: 0 0 auto;
+    }
+    .shop-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+    }
+    .shop-card {
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px #00000012;
+      cursor: pointer;
+      transition: transform 0.2s ease-out;
+      position: relative;
+      will-change: transform;
+    }
+    .shop-card:active {
+      transform: scale(0.98);
+    }
+    .img-wrap {
+      width: 100%;
+      height: 180px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      scroll-snap-type: x mandatory;
+      pointer-events: none;
+      scrollbar-width: none;
+    }
+    .img-wrap::-webkit-scrollbar {
+      display: none;
+    }
+    .img-wrap img {
+      height: 100%;
+      width: auto;
+      scroll-snap-align: start;
+      flex-shrink: 0;
+      object-fit: cover;
+      background: #f0f0f0;
+    }
+    .info {
+      padding: 14px;
+      padding-right: 60px;
+      position: relative;
+      min-height: 120px;
+    }
+    .title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #111;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: 6px 0;
+    }
+    .tag {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background: #e8f3ff;
+      color: #2478d8;
+    }
+    .price-score {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 8px 0;
+    }
+    .price {
+      color: #f54242;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .score {
+      color: #333;
+      font-size: 13px;
+    }
+    .remark {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.5;
+      margin-top: 6px;
+      padding-right: 10px;
+    }
+    .vote-btn {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #ffecef;
+      color: #ff7d97;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 2;
+      will-change: transform;
+    }
+    .vote-btn.voted {
+      background: #ff2d55;
+      color: white;
+    }
+    .vote-btn:active {
+      transform: scale(1.15);
+    }
+
+    /* 沉浸式全屏浏览 */
+    .immersive-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      z-index: 9999;
+      display: none;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .immersive-modal.active {
+      display: block;
+      opacity: 1;
+    }
+    .shop-vertical-wrap {
+      width: 100%;
+      height: 100vh;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+    }
+    .shop-vertical-wrap::-webkit-scrollbar {
+      display: none;
+    }
+    .shop-full-item {
+      width: 100%;
+      height: 100vh;
+      scroll-snap-align: start;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .img-horizontal-wrap {
+      width: 100%;
+      height: 100%;
+      overflow-x: scroll;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      display: flex;
+    }
+    .img-horizontal-wrap::-webkit-scrollbar {
+      display: none;
+    }
+    .img-horizontal-wrap img {
+      min-width: 100%;
+      height: 100%;
+      object-fit: contain;
+      scroll-snap-align: center;
+      flex-shrink: 0;
+      background: #000;
+    }
+    .shop-full-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 60px;
+      padding: 20px 20px 40px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      color: #fff;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .shop-full-info .shop-name {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .shop-full-info .shop-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    .shop-full-info .shop-note {
+      font-size: 13px;
+      line-height: 1.6;
+      opacity: 0.85;
+    }
+    .like-btn {
+      position: absolute;
+      right: 20px;
+      bottom: 80px;
+      z-index: 3;
+      font-size: 44px;
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      will-change: transform;
+    }
+    .like-btn.liked {
+      color: #ff2d55;
+    }
+    .like-btn:active {
+      transform: scale(1.2);
+    }
+    .close-immersive {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
+      background: rgba(0,0,0,0.3);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .img-indicator {
+      position: absolute;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .img-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      transition: all 0.2s ease;
+    }
+    .img-dot.active {
+      background: #fff;
+      width: 18px;
+      border-radius: 3px;
+    }
+    /* 双击爱心动画 */
+    .heart-animation {
+      position: absolute;
+      font-size: 80px;
+      color: #ff2d55;
+      pointer-events: none;
+      animation: heartPop 0.8s ease-out forwards;
+      z-index: 5;
+    }
+    @keyframes heartPop {
+      0% { transform: scale(0); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+
+    /* 复制成功提示 */
+    .toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .filter-bar { padding: 10px; gap: 6px; top: 10px; }
+      select { font-size: 12px; padding: 5px 8px; }
+      .shop-list { grid-template-columns: 1fr; }
+      .shop-full-info { right: 0; padding: 16px 16px 30px; }
+      .like-btn { font-size: 36px; right: 16px; bottom: 70px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>日本美食店铺投票清单</h1>
+    <p>点击卡片进入全屏浏览，双击或点红心投票</p>
+    <button class="export-btn" onclick="exportVote()">导出我的投票</button>
+  </div>
+
+  <div class="filter-bar">
+    <select id="cityFilter">
+      <option value="">全部城市</option>
+      <option value="东京">东京</option>
+      <option value="大阪">大阪</option>
+      <option value="镰仓">镰仓</option>
+      <option value="富士山">富士山</option>
+    </select>
+    <select id="typeFilter">
+      <option value="">全部类型</option>
+      <option value="甜品">甜品</option>
+      <option value="烧肉">烧肉</option>
+      <option value="寿司">寿司</option>
+      <option value="拉面">拉面</option>
+      <option value="猪排饭">猪排饭</option>
+      <option value="寿喜锅">寿喜锅</option>
+      <option value="鳗鱼饭">鳗鱼饭</option>
+      <option value="天妇罗">天妇罗</option>
+      <option value="烧鸟">烧鸟</option>
+      <option value="居酒屋">居酒屋</option>
+      <option value="咖啡店">咖啡店</option>
+      <option value="汤咖喱">汤咖喱</option>
+      <option value="蘸面">蘸面</option>
+    </select>
+    <select id="scoreFilter">
+      <option value="">全部评分</option>
+      <option value="4">4分以上</option>
+      <option value="4.5">4.5分以上</option>
+      <option value="5">5分满分</option>
+    </select>
+    <select id="sortFilter">
+      <option value="score-desc">评分优先</option>
+      <option value="price-asc">低价优先</option>
+      <option value="price-desc">高价优先</option>
+      <option value="vote-desc">投票最多</option>
+    </select>
+    <button id="resetBtn">重置</button>
+  </div>
+
+  <div class="shop-list" id="shopContainer"></div>
+
+  <!-- 沉浸式全屏浏览 -->
+  <div class="immersive-modal" id="immersiveModal">
+    <div class="close-immersive" id="closeImmersive">×</div>
+    <div class="shop-vertical-wrap" id="verticalWrap"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+// 全部店铺数据源 已替换为本地相对路径
+const shopList = [
+  {
+    id: 1,
+    shopName: "Patisserie &Chocolat Del'immoTokyo Midtown Hibiya",
+    city: "东京",
+    region: "银座",
+    foodType: "甜品",
+    priceRmb: 126.21,
+    score: 4.0,
+    note: "目前有夏季限定",
+    images: [
+      "images/shop1-1.md.png",
+      "images/shop1-2.md.png",
+      "images/shop1-3.md.png",
+      "images/shop1-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 2,
+    shopName: "bills (Shichirigahama)",
+    city: "镰仓",
+    region: "七里滨",
+    foodType: "甜品",
+    priceRmb: 143.04,
+    score: 4.0,
+    note: "号称世界第一松饼",
+    images: [
+      "images/shop2-1.md.png",
+      "images/shop2-2.md.png",
+      "images/shop2-3.md.png",
+      "images/shop2-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 3,
+    shopName: "Tamaniha Yakiniku",
+    city: "东京",
+    region: "涩谷",
+    foodType: "烧肉（非自助）",
+    priceRmb: 350.00,
+    score: 4.6,
+    note: "不确定能不能预约，排队一般0.5-1h；特色是可以喝的肉，汁水很足",
+    images: [
+      "images/shop3-1.md.png",
+      "images/shop3-2.md.png",
+      "images/shop3-3.md.png",
+      "images/shop3-4.md.png",
+      "images/shop3-5.md.png",
+      "images/shop3-6.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 4,
+    shopName: "Emit Fishbar",
+    city: "东京",
+    region: "银座",
+    foodType: "生蚝",
+    priceRmb: 250.00,
+    score: 3.7,
+    note: "类似法餐性质，主要吃生蚝，6个100R+类似",
+    images: [
+      "images/shop4-1.md.png",
+      "images/shop4-2.md.png",
+      "images/shop4-3.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 5,
+    shopName: "立食い寿司根室花まる銀座店",
+    city: "东京",
+    region: "银座",
+    foodType: "寿司",
+    priceRmb: 220.00,
+    score: 4.4,
+    note: "站着吃的寿司，自己写号师傅上；2位70岁+老师傅制作，不用预约",
+    images: [
+      "images/shop5-1.md.png",
+      "images/shop5-2.md.png",
+      "images/shop5-3.md.png",
+      "images/shop5-4.md.png",
+      "images/shop5-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 6,
+    shopName: "Menya Jouroku",
+    city: "大阪",
+    region: "中央区難波",
+    foodType: "酱油拉面",
+    priceRmb: 50.48,
+    score: 3.8,
+    note: "酱油拉面 比较清口 第一顿很不错",
+    images: [
+      "images/shop6-1.md.png",
+      "images/shop6-2.md.png",
+      "images/shop6-3.md.png",
+      "images/shop6-4.md.png",
+      "images/shop6-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 7,
+    shopName: "大阪とんかつ",
+    city: "大阪",
+    region: "中央区難波",
+    foodType: "猪排饭",
+    priceRmb: 84.14,
+    score: 3.9,
+    note: "猪排饭 厚切  有鸡排饭",
+    images: [
+      "images/shop7-1.md.png",
+      "images/shop7-2.md.png",
+      "images/shop7-3.md.png",
+      "images/shop7-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 8,
+    shopName: "Hyde&Away Osaka",
+    city: "大阪",
+    region: "中央区難波",
+    foodType: "甜点 蛋糕",
+    priceRmb: "",
+    score: 3.8,
+    note: "",
+    images: [
+      "images/shop8-1.md.png",
+      "images/shop8-2.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 9,
+    shopName: "wad",
+    city: "大阪",
+    region: "中央区難波",
+    foodType: "甜点 冰沙等",
+    priceRmb: "",
+    score: 4.5,
+    note: "",
+    images: [
+      "images/shop9-1.md.png",
+      "images/shop9-2.md.png",
+      "images/shop9-3.md.png",
+      "images/shop9-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 10,
+    shopName: "WAGYU SUKIYAKI 極~GOKU~大阪心斎橋",
+    city: "大阪",
+    region: "中央区難波",
+    foodType: "寿喜锅（非自助）",
+    priceRmb: 227.18,
+    score: 5.0,
+    note: "关西吃法，定时，非自助",
+    images: [
+      "images/shop10-1.md.png",
+      "images/shop10-2.md.png",
+      "images/shop10-3.md.png",
+      "images/shop10-4.md.png",
+      "images/shop10-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 11,
+    shopName: "Yakiniku TantoHarami.",
+    city: "大阪",
+    region: "梅田",
+    foodType: "烧肉+海鲜雪蟹",
+    priceRmb: 335.72,
+    score: 4.4,
+    note: "烧肉6500套餐，可点寿司；海鲜套餐含雪蟹、扇贝等",
+    images: [
+      "images/shop11-1.md.png",
+      "images/shop11-2.md.png",
+      "images/shop11-3.md.png",
+      "images/shop11-4.md.png",
+      "images/shop11-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 12,
+    shopName: "和牛海鲜一乐道顿堀店",
+    city: "大阪",
+    region: "道顿堀",
+    foodType: "寿喜锅+海鲜雪蟹（自助）",
+    priceRmb: 323.01,
+    score: 4.2,
+    note: "A5和牛套餐，海鲜有雪蟹、鲍鱼、扇贝、贝类虾",
+    images: [
+      "images/shop12-1.md.png",
+      "images/shop12-2.md.png",
+      "images/shop12-3.md.png",
+      "images/shop12-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 13,
+    shopName: "KATANAMI MAGUROOMAKASE & SUSHI",
+    city: "大阪",
+    region: "心斋桥",
+    foodType: "寿司",
+    priceRmb: 504.84,
+    score: 4.8,
+    note: "菜单会变更，菜数量不多，菜量不错，建议预约",
+    images: [
+      "images/shop13-1.md.png",
+      "images/shop13-2.md.png",
+      "images/shop13-3.md.png",
+      "images/shop13-4.md.png",
+      "images/shop13-5.md.png",
+      "images/shop13-6.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 14,
+    shopName: "PARLA PARLA",
+    city: "东京",
+    region: "涩谷/银座",
+    foodType: "甜品 可丽饼",
+    priceRmb: 74.04,
+    score: 4.0,
+    note: "",
+    images: [
+      "images/shop14-1.md.png",
+      "images/shop14-2.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 15,
+    shopName: "不知名烧肉",
+    city: "东京",
+    region: "新宿",
+    foodType: "烧肉",
+    priceRmb: 300.00,
+    score: "",
+    note: "无店名，只有大概位置，谷歌地图已收藏；烧肉现煮现烤",
+    images: [
+      "images/shop15-1.md.png",
+      "images/shop15-2.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 16,
+    shopName: "Tendon Itsuki Ginza",
+    city: "东京",
+    region: "银座",
+    foodType: "天妇罗",
+    priceRmb: 92.55,
+    score: 4.3,
+    note: "说是不腻/清真",
+    images: [
+      "images/shop16-1.md.png",
+      "images/shop16-2.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 17,
+    shopName: "炭焼うな富士（炭烤富士鳗鱼）",
+    city: "大阪",
+    region: "梅田",
+    foodType: "鳗鱼饭",
+    priceRmb: 237.27,
+    score: 4.3,
+    note: "鳗鱼饭！最好预约；支持一鱼三吃",
+    images: [
+      "images/shop17-1.md.png",
+      "images/shop17-2.md.png",
+      "images/shop17-3.md.png",
+      "images/shop17-4.md.png",
+      "images/shop17-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 18,
+    shopName: "大阪かに銀難波店",
+    city: "大阪",
+    region: "中央区難波",
+    foodType: "帝王蟹+寿喜锅",
+    priceRmb: 786.71,
+    score: 4.7,
+    note: "雪蟹11000/人，蟹腿饱满",
+    images: [
+      "images/shop18-1.md.png",
+      "images/shop18-2.md.png",
+      "images/shop18-3.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 19,
+    shopName: "Arrow Tree HanshinUmeda Store",
+    city: "大阪",
+    region: "梅田",
+    foodType: "甜品",
+    priceRmb: 168.28,
+    score: 4.0,
+    note: "草莓季才有，4000日元约2个蛋糕",
+    images: [
+      "images/shop19-1.md.png",
+      "images/shop19-2.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 20,
+    shopName: "鮨梵凡",
+    city: "大阪",
+    region: "中央区難波",
+    foodType: "寿司",
+    priceRmb: 420.70,
+    score: 4.8,
+    note: "1万日元15个寿司，不一定能吃饱，颜值高",
+    images: [
+      "images/shop20-1.md.png",
+      "images/shop20-2.md.png",
+      "images/shop20-3.md.png",
+      "images/shop20-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 21,
+    shopName: "和牛すき焼き京都五天五",
+    city: "大阪",
+    region: "中央区難波",
+    foodType: "寿喜锅（自助）",
+    priceRmb: 462.77,
+    score: 4.9,
+    note: "常规寿喜锅自助，和牛畅吃",
+    images: [
+      "images/shop21-1.md.png",
+      "images/shop21-2.md.png",
+      "images/shop21-3.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 22,
+    shopName: "鮨仙酢",
+    city: "大阪",
+    region: "大阪駅前",
+    foodType: "寿司",
+    priceRmb: 323.94,
+    score: 4.2,
+    note: "15个，不一定能吃饱，部分鱼生可能腥",
+    images: [
+      "images/shop22-1.md.png",
+      "images/shop22-2.md.png",
+      "images/shop22-3.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 23,
+    shopName: "道玄坂マンモス",
+    city: "东京",
+    region: "涩谷",
+    foodType: "蘸面",
+    priceRmb: 54.69,
+    score: 4.1,
+    note: "点完排队，汤底是鱼粉+猪骨，3种辣度可选",
+    images: [
+      "images/shop23-1.md.png",
+      "images/shop23-2.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 24,
+    shopName: "Sakana no ISHISAKA 魚のいしさか",
+    city: "大阪",
+    region: "中央区",
+    foodType: "寿司",
+    priceRmb: 328.15,
+    score: 4.8,
+    note: "南船場BRICK1F，寿司造型精致",
+    images: [
+      "images/shop24-1.md.png",
+      "images/shop24-2.md.png",
+      "images/shop24-3.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 25,
+    shopName: "Wagyu Yakiniku Blackhole",
+    city: "东京",
+    region: "新宿",
+    foodType: "烧肉",
+    priceRmb: 252.42,
+    score: 4.0,
+    note: "100分钟用餐；啤酒放题+1500日元；3人约18000日元",
+    images: [
+      "images/shop25-1.md.png",
+      "images/shop25-2.md.png",
+      "images/shop25-3.md.png",
+      "images/shop25-4.md.png",
+      "images/shop25-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 26,
+    shopName: "Tamai Nihonbashi MainBranch",
+    city: "东京",
+    region: "日本桥",
+    foodType: "鳗鱼饭",
+    priceRmb: 159.87,
+    score: 4.5,
+    note: "",
+    images: [
+      "images/shop26-1.md.png",
+      "images/shop26-2.md.png",
+      "images/shop26-3.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 27,
+    shopName: "Niku-ya-Yokocho 秋叶原和牛烧肉",
+    city: "东京",
+    region: "秋叶原",
+    foodType: "烧肉",
+    priceRmb: 349.18,
+    score: 4.1,
+    note: "",
+    images: [
+      "images/shop27-1.md.png",
+      "images/shop27-2.md.png",
+      "images/shop27-3.md.png",
+      "images/shop27-4.md.png",
+      "images/shop27-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 28,
+    shopName: "Açaí base almalio",
+    city: "大阪",
+    region: "",
+    foodType: "甜品 沙冰",
+    priceRmb: 63.11,
+    score: 4.4,
+    note: "不在常规旅游路线上",
+    images: [
+      "images/shop28-1.md.png",
+      "images/shop28-2.md.png",
+      "images/shop28-3.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 29,
+    shopName: "Motenashi Kuroki",
+    city: "东京",
+    region: "",
+    foodType: "拉面",
+    priceRmb: 105.18,
+    score: 4.2,
+    note: "鸡汤底，多种胡椒特色",
+    images: [
+      "images/shop29-1.md.png",
+      "images/shop29-2.md.png",
+      "images/shop29-3.md.png",
+      "images/shop29-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 30,
+    shopName: "串助原宿店",
+    city: "东京",
+    region: "原宿",
+    foodType: "烧鸟",
+    priceRmb: 168.28,
+    score: 3.8,
+    note: "评分一般，评价尚可",
+    images: [
+      "images/shop30-1.md.png",
+      "images/shop30-2.md.png",
+      "images/shop30-3.md.png",
+      "images/shop30-4.md.png",
+      "images/shop30-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 31,
+    shopName: "Kaiju Sakaba Shimbashi（怪兽酒场）",
+    city: "东京",
+    region: "港区",
+    foodType: "居酒屋",
+    priceRmb: "",
+    score: 3.9,
+    note: "主题噱头店，吃喝评价一般",
+    images: [
+      "images/shop31-1.md.png",
+      "images/shop31-2.md.png",
+      "images/shop31-3.md.png",
+      "images/shop31-4.md.png",
+      "images/shop31-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 32,
+    shopName: "THE PARK",
+    city: "富士山",
+    region: "中山湖",
+    foodType: "咖啡店",
+    priceRmb: "",
+    score: 4.2,
+    note: "富士山景观咖啡店，必去打卡",
+    images: [
+      "images/shop32-1.md.png",
+      "images/shop32-2.md.png",
+      "images/shop32-3.md.png",
+      "images/shop32-4.md.png",
+      "images/shop32-5.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 33,
+    shopName: "レア天丼銀座三よし銀座本店",
+    city: "东京",
+    region: "银座",
+    foodType: "天妇罗",
+    priceRmb: 138.83,
+    score: 4.4,
+    note: "和牛天妇罗特色，建议预约",
+    images: [
+      "images/shop33-1.md.png",
+      "images/shop33-2.md.png",
+      "images/shop33-3.md.png",
+      "images/shop33-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 34,
+    shopName: "Bakumatsu Curry",
+    city: "东京",
+    region: "涩谷",
+    foodType: "汤咖喱",
+    priceRmb: 147.25,
+    score: 4.7,
+    note: "九龙头咖喱，口碑很好",
+    images: [
+      "images/shop34-1.md.png",
+      "images/shop34-2.md.png",
+      "images/shop34-3.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 35,
+    shopName: "Oota Zushi",
+    city: "东京",
+    region: "日本桥",
+    foodType: "寿司",
+    priceRmb: 290.28,
+    score: 4.6,
+    note: "15贯寿司套餐",
+    images: [
+      "images/shop35-1.md.png",
+      "images/shop35-2.md.png",
+      "images/shop35-3.md.png",
+      "images/shop35-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 36,
+    shopName: "焼きとりきびたき三鳥目",
+    city: "大阪",
+    region: "心斋桥",
+    foodType: "烧鸟",
+    priceRmb: 250.00,
+    score: 5.0,
+    note: "满分烧鸟店，炭火烤制，值得一试",
+    images: [
+      "images/shop36-1.md.png",
+      "images/shop36-2.md.png",
+      "images/shop36-3c49dcc24f4f826bf.md.png",
+      "images/shop36-4.md.png"
+    ],
+    vote: 0
+  },
+  {
+    id: 37,
+    shopName: "Sushi Azabu",
+    city: "东京",
+    region: "麻布台",
+    foodType: "寿司",
+    priceRmb: 201.94,
+    score: 4.6,
+    note: "需预约，性价比不错",
+    images: [
+      "images/shop37-10df8048f462d4c6e.md.png",
+      "images/shop37-2.md.png",
+      "images/shop37-3.md.png",
+      "images/shop37-4d9db14e015f81595.md.png",
+      "images/shop37-5.md.png",
+      "images/shop37-6.md.png"
+    ],
+    vote: 0
+  }
+];
+
+let filterData = [...shopList];
+const immersiveModal = document.getElementById('immersiveModal');
+const verticalWrap = document.getElementById('verticalWrap');
+const closeImmersive = document.getElementById('closeImmersive');
+const toast = document.getElementById('toast');
+let currentImmersiveIndex = 0;
+let scrollTimer = null;
+
+// 读取本地存储投票
+function loadVote() {
+  const save = localStorage.getItem('shopVote');
+  if(save) {
+    const voteObj = JSON.parse(save);
+    shopList.forEach(item=>{
+      if(voteObj[item.id]) item.vote = voteObj[item.id];
+    })
+  }
+}
+// 保存投票
+function saveVote() {
+  const obj = {};
+  shopList.forEach(i=>obj[i.id] = i.vote);
+  localStorage.setItem('shopVote', JSON.stringify(obj));
+}
+
+// 显示提示
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 1500);
+}
+
+// 导出投票结果
+function exportVote() {
+  const voted = shopList.filter(s=>s.vote > 0).map(s=>`${s.shopName} - ${s.vote}票`);
+  const text = voted.length > 0 
+    ? `我的投票：\n${voted.join('\n')}`
+    : '还没有投票哦';
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast('投票结果已复制，直接粘贴分享');
+  }).catch(()=>{
+    prompt('复制以下内容分享：', text);
+  });
+}
+
+// 渲染列表卡片
+function renderList() {
+  const container = document.getElementById('shopContainer');
+  container.innerHTML = filterData.map((shop, index) => {
+    let imgHtml = '';
+    if(shop.images && shop.images.length>0) {
+      shop.images.forEach((url, i)=>{
+        imgHtml += `<img src="${url}" alt="" loading="lazy" decoding="async">`
+      })
+    }
+    return `
+      <div class="shop-card" onclick="openImmersive(${shop.id})">
+        <div class="img-wrap">${imgHtml || '<div style="width:100%;height:100%;background:#eee;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">暂无实拍图</div>'}</div>
+        <div class="info">
+          <div class="title">${shop.shopName}</div>
+          <div class="tag-row">
+            <span class="tag">${shop.city} ${shop.region}</span>
+            <span class="tag">${shop.foodType}</span>
+          </div>
+          <div class="price-score">
+            <div class="price">人均 ¥${shop.priceRmb || '无'}</div>
+            <div class="score">Google评分：${shop.score || '暂无'}</div>
+          </div>
+          <div class="remark">${shop.note || '暂无备注'}</div>
+          <button class="vote-btn ${shop.vote>0?'voted':''}" onclick="event.stopPropagation(); voteShop(${shop.id})">❤️</button>
+        </div>
+      </div>
+    `
+  }).join('');
+}
+
+// 投票
+window.voteShop = function(id) {
+  const target = shopList.find(s=>s.id===id);
+  if(target) {
+    target.vote += 1;
+    saveVote();
+    renderList();
+    updateImmersiveVote(id);
+  }
+}
+
+// 打开沉浸式浏览
+window.openImmersive = function(id) {
+  const index = shopList.findIndex(s=>s.id===id);
+  currentImmersiveIndex = index;
+  renderImmersive();
+  immersiveModal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  setTimeout(()=>{
+    const items = document.querySelectorAll('.shop-full-item');
+    if(items[index]) items[index].scrollIntoView({behavior: 'auto'});
+  }, 10);
+}
+
+// 关闭沉浸式
+closeImmersive.onclick = () => {
+  immersiveModal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// 渲染沉浸式所有店铺
+function renderImmersive() {
+  verticalWrap.innerHTML = shopList.map((shop, index) => {
+    let imgHtml = '';
+    let dotsHtml = '';
+    shop.images.forEach((url, i)=>{
+      imgHtml += `<img src="${url}" alt="" loading="lazy" decoding="async">`;
+      dotsHtml += `<div class="img-dot ${i===0?'active':''}"></div>`;
+    });
+    return `
+      <div class="shop-full-item" data-id="${shop.id}" data-index="${index}">
+        <div class="img-horizontal-wrap" data-shop-id="${shop.id}">
+          ${imgHtml}
+        </div>
+        <div class="img-indicator">${dotsHtml}</div>
+        <div class="like-btn ${shop.vote>0?'liked':''}" onclick="event.stopPropagation(); voteShop(${shop.id})">❤️</div>
+        <div class="shop-full-info">
+          <div class="shop-name">${shop.shopName}</div>
+          <div class="shop-meta">
+            <span>${shop.city} ${shop.region}</span>
+            <span>${shop.foodType}</span>
+            <span>人均 ¥${shop.priceRmb || '无'}</span>
+            <span>Google评分：${shop.score || '暂无'}</span>
+          </div>
+          <div class="shop-note">${shop.note || '暂无备注'}</div>
+        </div>
+      </div>
+    `
+  }).join('');
+
+  // 双击投票
+  document.querySelectorAll('.shop-full-item').forEach(item=>{
+    let lastClick = 0;
+    item.addEventListener('click', (e)=>{
+      const now = Date.now();
+      if(now - lastClick < 300) {
+        const id = Number(item.dataset.id);
+        voteShop(id);
+        showHeartAnimation(e.clientX, e.clientY);
+      }
+      lastClick = now;
+    });
+  });
+
+  // 横向滚动指示器 节流优化
+  document.querySelectorAll('.img-horizontal-wrap').forEach(wrap=>{
+    wrap.addEventListener('scroll', ()=>{
+      if(scrollTimer) return;
+      scrollTimer = setTimeout(()=>{
+        const shopId = wrap.dataset.shopId;
+        const scrollLeft = wrap.scrollLeft;
+        const width = wrap.clientWidth;
+        const current = Math.round(scrollLeft / width);
+        const dots = wrap.parentElement.querySelectorAll('.img-dot');
+        dots.forEach((dot, i)=>{
+          dot.classList.toggle('active', i === current);
+        });
+        scrollTimer = null;
+      }, 50);
+    });
+  });
+}
+
+// 更新沉浸式投票状态
+function updateImmersiveVote(id) {
+  if(!immersiveModal.classList.contains('active')) return;
+  const item = document.querySelector(`.shop-full-item[data-id="${id}"]`);
+  if(item) {
+    const btn = item.querySelector('.like-btn');
+    const shop = shopList.find(s=>s.id===id);
+    btn.classList.toggle('liked', shop.vote > 0);
+  }
+}
+
+// 双击爱心动画
+function showHeartAnimation(x, y) {
+  const heart = document.createElement('div');
+  heart.className = 'heart-animation';
+  heart.textContent = '❤️';
+  heart.style.left = (x - 40) + 'px';
+  heart.style.top = (y - 40) + 'px';
+  immersiveModal.appendChild(heart);
+  setTimeout(()=>heart.remove(), 800);
+}
+
+// 筛选排序
+function filterSort() {
+  const cityVal = document.getElementById('cityFilter').value;
+  const typeVal = document.getElementById('typeFilter').value;
+  const scoreVal = document.getElementById('scoreFilter').value;
+  const sortVal = document.getElementById('sortFilter').value;
+
+  filterData = [...shopList];
+  if(cityVal) filterData = filterData.filter(s=>s.city === cityVal);
+  if(typeVal) filterData = filterData.filter(s=>s.foodType.includes(typeVal));
+  if(scoreVal) filterData = filterData.filter(s=>Number(s.score)>=Number(scoreVal));
+  
+  filterData.sort((a,b)=>{
+    switch(sortVal) {
+      case 'score-desc': return Number(b.score||0) - Number(a.score||0);
+      case 'price-asc': return Number(a.priceRmb||9999) - Number(b.priceRmb||9999);
+      case 'price-desc': return Number(b.priceRmb||0) - Number(a.priceRmb||0);
+      case 'vote-desc': return b.vote - a.vote;
+      default: return 0;
+    }
+  })
+  renderList();
+}
+
+// 重置筛选
+document.getElementById('resetBtn').onclick = ()=>{
+  document.getElementById('cityFilter').value = '';
+  document.getElementById('typeFilter').value = '';
+  document.getElementById('scoreFilter').value = '';
+  document.getElementById('sortFilter').value = 'score-desc';
+  filterSort();
+}
+['cityFilter','typeFilter','scoreFilter','sortFilter'].forEach(id=>{
+  document.getElementById(id).onchange = filterSort;
+})
+
+// 键盘快捷键
+document.addEventListener('keydown', (e)=>{
+  if(!immersiveModal.classList.contains('active')) return;
+  const items = document.querySelectorAll('.shop-full-item');
+  const current = Math.round(verticalWrap.scrollTop / window.innerHeight);
+  if(e.key === 'ArrowDown') {
+    if(current < items.length - 1) items[current+1].scrollIntoView({behavior: 'smooth'});
+  } else if(e.key === 'ArrowUp') {
+    if(current > 0) items[current-1].scrollIntoView({behavior: 'smooth'});
+  } else if(e.key === 'Escape') {
+    closeImmersive.click();
+  } else if(e.key === ' ') {
+    e.preventDefault();
+    const id = Number(items[current].dataset.id);
+    voteShop(id);
+  }
+});
+
+// 预加载首屏图片
+function preloadFirstScreen() {
+  const firstImages = shopList.slice(0, 6).flatMap(s=>s.images.slice(0,1));
+  firstImages.forEach(src=>{
+    const img = new Image();
+    img.src = src;
+  });
+}
+
+// 初始化
+loadVote();
+filterSort();
+window.addEventListener('load', preloadFirstScreen);
+</script>
+</body>
+</html>
